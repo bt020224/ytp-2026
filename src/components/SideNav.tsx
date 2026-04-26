@@ -12,6 +12,7 @@ const ITEMS = [
   { href: "/", icon: "🏠", labelKey: "navHome" as const },
   { href: "/plan", icon: "🛣️", labelKey: "navPlan" as const },
   { href: "/itinerary", icon: "📋", labelKey: "navItinerary" as const },
+  { href: "/quest", icon: "🎮", labelKey: "navQuest" as const },
 ];
 
 export function SideNav() {

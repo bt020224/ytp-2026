@@ -267,6 +267,12 @@ export const STRINGS: Record<string, L> = {
     ja: "旅程",
     ko: "일정",
   },
+  navQuest: {
+    zh: "劇情遊戲",
+    en: "Story Quest",
+    ja: "ストーリークエスト",
+    ko: "스토리 퀘스트",
+  },
 
   homeHeroTitle: {
     zh: "在台北玩出新花樣",
@@ -451,6 +457,122 @@ export const STRINGS: Record<string, L> = {
     en: "No preloaded attractions within 500m. Try Plan Route.",
     ja: "周囲500m内におすすめがありません。「ルート計画」をお試しください。",
     ko: "주변 500m 내에 추천할 명소가 없습니다. '경로 계획'을 이용하세요.",
+  },
+
+  questTitle: {
+    zh: "🎮 劇情式旅遊",
+    en: "🎮 Story Quest",
+    ja: "🎮 ストーリークエスト",
+    ko: "🎮 스토리 퀘스트",
+  },
+  questSubtitle: {
+    zh: "選一個角色，AI 為你編寫五站任務，逐站解鎖",
+    en: "Pick a character, AI writes a 5-stop adventure, unlock as you go",
+    ja: "キャラを選択、AIが5つの任務を執筆、順番に解放",
+    ko: "캐릭터를 선택하고 AI가 5단계 모험을 만들어줍니다",
+  },
+  questPickCharacter: {
+    zh: "選擇你的角色",
+    en: "Pick your character",
+    ja: "キャラクターを選択",
+    ko: "캐릭터 선택",
+  },
+  questCharDetective: {
+    zh: "偵探",
+    en: "Detective",
+    ja: "探偵",
+    ko: "탐정",
+  },
+  questCharDetectiveDesc: {
+    zh: "尋找隱藏線索，破解台北街頭謎題",
+    en: "Hunt clues, solve street mysteries across Taipei",
+    ja: "手がかりを探し、台北の街の謎を解く",
+    ko: "단서를 찾아 타이베이 거리의 미스터리를 풀어라",
+  },
+  questCharExplorer: {
+    zh: "探險家",
+    en: "Explorer",
+    ja: "探検家",
+    ko: "탐험가",
+  },
+  questCharExplorerDesc: {
+    zh: "踏遍秘境步道，發現隱藏景點",
+    en: "Trek hidden trails and discover secret spots",
+    ja: "隠れた道を歩き、秘密のスポットを発見",
+    ko: "숨겨진 길을 따라 비밀 명소를 발견하라",
+  },
+  questCharFoodie: {
+    zh: "美食家",
+    en: "Foodie",
+    ja: "美食家",
+    ko: "미식가",
+  },
+  questCharFoodieDesc: {
+    zh: "尋找在地小吃，挑戰夜市必吃清單",
+    en: "Find local eats, conquer the night-market checklist",
+    ja: "地元グルメを巡り、夜市の必食を制覇",
+    ko: "현지 맛집을 찾아 야시장 필수 메뉴를 정복하라",
+  },
+  questBegin: {
+    zh: "開始冒險",
+    en: "Begin Adventure",
+    ja: "冒険を始める",
+    ko: "모험 시작",
+  },
+  questGenerating: {
+    zh: "AI 正在為你編寫故事…",
+    en: "AI is writing your story…",
+    ja: "AIがストーリーを作成中…",
+    ko: "AI가 스토리를 작성 중…",
+  },
+  questHint: { zh: "💡 提示", en: "💡 Hint", ja: "💡 ヒント", ko: "💡 힌트" },
+  questCompletion: {
+    zh: "✅ 完成條件",
+    en: "✅ Completion",
+    ja: "✅ 達成条件",
+    ko: "✅ 완료 조건",
+  },
+  questCompleteBtn: {
+    zh: "完成這項任務 ✓",
+    en: "Mark Complete ✓",
+    ja: "タスク完了 ✓",
+    ko: "완료 ✓",
+  },
+  questCompleted: {
+    zh: "✓ 已完成",
+    en: "✓ Done",
+    ja: "✓ 完了",
+    ko: "✓ 완료",
+  },
+  questLocked: {
+    zh: "🔒 完成上一站才能解鎖",
+    en: "🔒 Complete the previous step to unlock",
+    ja: "🔒 前のステップを完了で解放",
+    ko: "🔒 이전 단계 완료 시 해제",
+  },
+  questProgress: {
+    zh: "進度",
+    en: "Progress",
+    ja: "進行度",
+    ko: "진행도",
+  },
+  questFinaleTitle: {
+    zh: "🎉 冒險完成！",
+    en: "🎉 Adventure Complete!",
+    ja: "🎉 冒険達成！",
+    ko: "🎉 모험 완료!",
+  },
+  questResetBtn: {
+    zh: "重新開始一個新故事",
+    en: "Start a new story",
+    ja: "新しいストーリーを始める",
+    ko: "새 스토리 시작",
+  },
+  questOpenInPlan: {
+    zh: "在地圖規劃路線",
+    en: "Plan route on map",
+    ja: "地図でルート計画",
+    ko: "지도에서 경로 계획",
   },
 };
 
