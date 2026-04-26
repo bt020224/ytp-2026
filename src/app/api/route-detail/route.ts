@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { TAIPEI_ATTRACTIONS } from "@/lib/attractions";
+import { llmComplete, llmErrorPayload } from "@/lib/llm";
 
 export const runtime = "nodejs";
 
@@ -36,13 +36,6 @@ Format as a numbered list. Keep total response under 250 words.
 IMPORTANT: If you are not confident about a specific station name, line, or bus route number, say "check the station map" or list 2–3 likely options instead of inventing names. Do not fabricate.`;
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   let body: {
     originLat?: number;
     originLng?: number;
@@ -80,54 +73,19 @@ export async function POST(req: Request) {
     .join("\n");
 
   const langInstr = LANG_INSTRUCTIONS[lang ?? "en"] ?? LANG_INSTRUCTIONS.en;
+  const system = `${SYSTEM}\n\nLanguage: ${langInstr}`;
 
-  const userMsg = `Origin coordinates: ${originLat.toFixed(5)}, ${originLng.toFixed(5)}
+  const user = `Origin coordinates: ${originLat.toFixed(5)}, ${originLng.toFixed(5)}
 Destination: ${dest.nameZh} / ${dest.nameEn} (lat ${dest.lat}, lng ${dest.lng})
 Planned route ID: ${route.id}
 Segments:
-${segDesc}
-
-${langInstr}`;
-
-  const client = new Anthropic();
+${segDesc}`;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 1500,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [{ role: "user", content: userMsg }],
-    });
-
-    const detail = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-
+    const detail = await llmComplete({ system, user, maxTokens: 1500 });
     return NextResponse.json({ detail });
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
-    }
-    if (e instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Invalid ANTHROPIC_API_KEY on the server" },
-        { status: 500 }
-      );
-    }
-    if (e instanceof Anthropic.APIError) {
-      return NextResponse.json(
-        { error: `Anthropic API error (${e.status})` },
-        { status: 500 }
-      );
-    }
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const { status, body: errorBody } = llmErrorPayload(e);
+    return NextResponse.json(errorBody, { status });
   }
 }

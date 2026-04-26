@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { TAIPEI_ATTRACTIONS } from "@/lib/attractions";
+import { llmComplete, llmErrorPayload } from "@/lib/llm";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,7 @@ const CHARACTER_BRIEFS: Record<string, string> = {
     "Player is a food critic on a mission to crown the best night-market bite. Tasks involve eating specific dishes, comparing flavors, asking vendors signature questions, and assembling a personal flavor map.",
 };
 
-const SYSTEM = `You are a Taipei tourism game master designing a 5-stop story-driven quest for the "Play Taipei" game mode.
+const SYSTEM_BASE = `You are a Taipei tourism game master designing a 5-stop story-driven quest for the "Play Taipei" game mode.
 
 Given a player character role and a list of available attractions, write a coherent 5-quest adventure where:
 - ALL chosen attractionId values MUST come from the provided list — never invent IDs.
@@ -36,18 +36,20 @@ Given a player character role and a list of available attractions, write a coher
   - "storyHook": opening narrative addressed to the player (2-3 sentences setting the scene).
   - "ending": triumphant closing narrative played after the 5th quest is done (2-3 sentences).
 
-Return strict JSON matching the provided schema. No prose outside JSON.
+You MUST respond with ONLY a JSON object matching this exact shape:
+{
+  "storyTitle": "string",
+  "storyHook": "string",
+  "ending": "string",
+  "quests": [
+    { "attractionId": "<id>", "task": "string", "hint": "string", "completion": "string", "xp": 100 },
+    ... 5 entries total
+  ]
+}
 
-Make it FUN and gamey — use second person, evocative language, mystery/discovery framing.`;
+Return strict JSON. No prose outside JSON. Make it FUN and gamey — use second person, evocative language, mystery/discovery framing.`;
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   let body: { character?: string; lang?: string };
   try {
     body = await req.json();
@@ -66,61 +68,21 @@ export async function POST(req: Request) {
       `- id="${a.id}" | ${a.nameZh} (${a.nameEn}) | ${a.categoryEn} | lat ${a.lat} lng ${a.lng}`
   ).join("\n");
 
-  const userMsg = `Character role: ${characterKey}
+  const system = `${SYSTEM_BASE}\n\nLanguage instruction: ${langInstr}`;
+  const user = `Character role: ${characterKey}
 Character brief: ${characterBrief}
 Number of quests: 5
 
 Available attractions (use ONLY these IDs):
-${attractionList}
-
-${langInstr}`;
-
-  const client = new Anthropic();
+${attractionList}`;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 3000,
-      system: [
-        { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
-      ],
-      messages: [{ role: "user", content: userMsg }],
-      output_config: {
-        format: {
-          type: "json_schema",
-          schema: {
-            type: "object",
-            properties: {
-              storyTitle: { type: "string" },
-              storyHook: { type: "string" },
-              ending: { type: "string" },
-              quests: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    attractionId: { type: "string" },
-                    task: { type: "string" },
-                    hint: { type: "string" },
-                    completion: { type: "string" },
-                    xp: { type: "integer" },
-                  },
-                  required: ["attractionId", "task", "hint", "completion", "xp"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["storyTitle", "storyHook", "ending", "quests"],
-            additionalProperties: false,
-          },
-        },
-      },
+    const text = await llmComplete({
+      system,
+      user,
+      expectJson: true,
+      maxTokens: 3000,
     });
-
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
 
     let parsed: {
       storyTitle: string;
@@ -137,7 +99,13 @@ ${langInstr}`;
       );
     }
 
-    // Defensive: drop quests with hallucinated IDs
+    if (!Array.isArray(parsed?.quests)) {
+      return NextResponse.json(
+        { error: "AI returned unexpected JSON shape" },
+        { status: 502 }
+      );
+    }
+
     const validIds = new Set(TAIPEI_ATTRACTIONS.map((a) => a.id));
     const cleanedQuests = parsed.quests.filter((q) =>
       validIds.has(q.attractionId)
@@ -151,22 +119,7 @@ ${langInstr}`;
       quests: cleanedQuests,
     });
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
-    }
-    if (e instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Invalid ANTHROPIC_API_KEY on the server" },
-        { status: 500 }
-      );
-    }
-    if (e instanceof Anthropic.APIError) {
-      return NextResponse.json(
-        { error: `Anthropic API error (${e.status})` },
-        { status: 500 }
-      );
-    }
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const { status, body: errorBody } = llmErrorPayload(e);
+    return NextResponse.json(errorBody, { status });
   }
 }

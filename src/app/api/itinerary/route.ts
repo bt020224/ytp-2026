@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { TAIPEI_ATTRACTIONS } from "@/lib/attractions";
+import { llmComplete, llmErrorPayload } from "@/lib/llm";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,7 @@ const THEMES: Record<string, string> = {
   perf: "Performing arts and venues; mix anchor with adjacent food/coffee",
 };
 
-const SYSTEM = `You are a Taipei trip planner for the "Play Taipei" tourism app.
+const SYSTEM_BASE = `You are a Taipei trip planner for the "Play Taipei" tourism app.
 
 Given a list of available attractions, a theme, and a target stop count, pick the best subset and order them into a single-day itinerary.
 
@@ -31,16 +31,17 @@ Rules:
 - For each stop, write a SHORT (under 25 words) reasoning in the requested language explaining why it's at that position in the trip.
 - If user provides anchor coordinates, prefer attractions closer to that anchor for the FIRST stop.
 
-Return strict JSON matching the provided schema. No prose outside JSON.`;
+You MUST respond with ONLY a JSON object matching this exact shape:
+{
+  "itinerary": [
+    { "attractionId": "<id from list>", "reasoning": "<short reason>" },
+    ...
+  ]
+}
+
+Return strict JSON. No prose outside JSON.`;
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   let body: {
     theme?: string;
     numStops?: number;
@@ -70,7 +71,8 @@ export async function POST(req: Request) {
     )
     .join("\n");
 
-  const userMsg = `Theme: ${themeKey} — ${themeDesc}
+  const system = `${SYSTEM_BASE}\n\nLanguage instruction: ${langInstr}`;
+  const user = `Theme: ${themeKey} — ${themeDesc}
 Number of stops: ${numStops}
 ${
   typeof body.anchorLat === "number" && typeof body.anchorLng === "number"
@@ -79,54 +81,15 @@ ${
 }
 
 Available attractions (you may ONLY use these IDs):
-${attractionList}
-
-${langInstr}`;
-
-  const client = new Anthropic();
+${attractionList}`;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 2048,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [{ role: "user", content: userMsg }],
-      output_config: {
-        format: {
-          type: "json_schema",
-          schema: {
-            type: "object",
-            properties: {
-              itinerary: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    attractionId: { type: "string" },
-                    reasoning: { type: "string" },
-                  },
-                  required: ["attractionId", "reasoning"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["itinerary"],
-            additionalProperties: false,
-          },
-        },
-      },
+    const text = await llmComplete({
+      system,
+      user,
+      expectJson: true,
+      maxTokens: 2048,
     });
-
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
 
     let parsed: { itinerary: { attractionId: string; reasoning: string }[] };
     try {
@@ -138,28 +101,19 @@ ${langInstr}`;
       );
     }
 
-    // Filter out any hallucinated IDs (defensive)
+    if (!Array.isArray(parsed?.itinerary)) {
+      return NextResponse.json(
+        { error: "AI returned unexpected JSON shape" },
+        { status: 502 }
+      );
+    }
+
     const validIds = new Set(candidates.map((a) => a.id));
     const cleaned = parsed.itinerary.filter((s) => validIds.has(s.attractionId));
 
     return NextResponse.json({ itinerary: cleaned });
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
-    }
-    if (e instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Invalid ANTHROPIC_API_KEY on the server" },
-        { status: 500 }
-      );
-    }
-    if (e instanceof Anthropic.APIError) {
-      return NextResponse.json(
-        { error: `Anthropic API error (${e.status})` },
-        { status: 500 }
-      );
-    }
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const { status, body: errorBody } = llmErrorPayload(e);
+    return NextResponse.json(errorBody, { status });
   }
 }
