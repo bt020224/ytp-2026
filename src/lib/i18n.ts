@@ -76,10 +76,28 @@ export const STRINGS: Record<string, L> = {
     ko: "타이베이 외부입니다. 타이베이 중심을 기본 출발점으로 설정합니다.",
   },
   gpsDenied: {
-    zh: "無法取得定位，請手動輸入或選地圖。",
-    en: "Location denied. Enter coordinates or pick on map.",
-    ja: "位置情報を取得できません。手動入力または地図で選択してください。",
-    ko: "위치를 가져올 수 없습니다. 좌표를 입력하거나 지도를 클릭하세요.",
+    zh: "瀏覽器拒絕定位權限，請點地圖或手動輸入經緯度。",
+    en: "Location permission denied. Click on the map or enter coordinates.",
+    ja: "ブラウザが位置情報を拒否しました。地図をクリックするか、緯度経度を入力してください。",
+    ko: "브라우저가 위치 정보를 거부했습니다. 지도를 클릭하거나 좌표를 입력하세요.",
+  },
+  gpsTimeout: {
+    zh: "定位逾時，請改用地圖點選或手動輸入。",
+    en: "Location request timed out. Try clicking the map instead.",
+    ja: "位置情報の取得がタイムアウトしました。地図で指定してください。",
+    ko: "위치 요청 시간이 초과되었습니다. 지도에서 선택하세요.",
+  },
+  gpsUnavailable: {
+    zh: "目前無法取得定位（GPS 訊號或裝置問題）。",
+    en: "Location unavailable (GPS signal or device issue).",
+    ja: "位置情報を取得できません（GPS信号またはデバイスの問題）。",
+    ko: "위치 정보를 사용할 수 없습니다 (GPS 신호 또는 기기 문제).",
+  },
+  gpsUnsupported: {
+    zh: "此瀏覽器不支援定位功能。",
+    en: "This browser does not support geolocation.",
+    ja: "このブラウザは位置情報をサポートしていません。",
+    ko: "이 브라우저는 위치 정보를 지원하지 않습니다.",
   },
   pickOnMap: {
     zh: "點地圖設定起點",
@@ -191,6 +209,31 @@ export const STRINGS: Record<string, L> = {
     en: "※ AI estimate — confirm at the station",
     ja: "※ AI推定。実際は駅で確認してください",
     ko: "※ AI 추정 — 역에서 확인하세요",
+  },
+  showOnMap: {
+    zh: "於地圖上顯示",
+    en: "Show on map",
+    ja: "地図に表示",
+    ko: "지도에 표시",
+  },
+  selectedOnMap: {
+    zh: "已顯示於地圖",
+    en: "Showing on map",
+    ja: "地図に表示中",
+    ko: "지도에 표시 중",
+  },
+  legend: { zh: "圖例", en: "Legend", ja: "凡例", ko: "범례" },
+  brand: {
+    zh: "台北找樂",
+    en: "Taipei Find Fun",
+    ja: "台北で遊ぼう",
+    ko: "타이베이 즐기기",
+  },
+  brandTagline: {
+    zh: "AI · 路線 · 票券 · 多語",
+    en: "AI · Routes · Tickets · Multilingual",
+    ja: "AI · ルート · チケット · 多言語",
+    ko: "AI · 경로 · 티켓 · 다국어",
   },
 };
 

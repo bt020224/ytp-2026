@@ -182,3 +182,15 @@ export const MODE_ICON: Record<TransportMode, string> = {
   bus: "🚌",
   taxi: "🚕",
 };
+
+// Hex color + dash style per transport mode for map polylines
+export const MODE_STYLE: Record<
+  TransportMode,
+  { color: string; dashArray?: string; weight: number }
+> = {
+  walk: { color: "#34d399", weight: 4, dashArray: "2 8" },
+  ubike: { color: "#a3e635", weight: 5, dashArray: "8 4" },
+  mrt: { color: "#ef4444", weight: 6 },
+  bus: { color: "#3b82f6", weight: 5, dashArray: "10 6" },
+  taxi: { color: "#f59e0b", weight: 5 },
+};

@@ -13,11 +13,13 @@ import {
 } from "@/lib/attractions";
 import {
   MODE_ICON,
+  MODE_STYLE,
   haversineKm,
   nearbyAttractions,
   planRoutes,
   type Route,
   type RouteTag,
+  type TransportMode,
 } from "@/lib/transport";
 import { LANG_LABELS, t, type Lang } from "@/lib/i18n";
 
@@ -46,6 +48,49 @@ const TAG_LABEL_KEY: Record<RouteTag, "tagFastest" | "tagCheapest" | "tagBalance
   balanced: "tagBalanced",
 };
 
+function Section({
+  id,
+  title,
+  accent,
+  badge,
+  openSet,
+  onToggle,
+  children,
+}: {
+  id: string;
+  title: React.ReactNode;
+  accent: string;
+  badge?: React.ReactNode;
+  openSet: Set<string>;
+  onToggle: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  const open = openSet.has(id);
+  return (
+    <div className={`rounded-xl ring-1 ${accent}`}>
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="w-full flex justify-between items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition rounded-xl"
+      >
+        <div className="text-sm font-semibold flex-1">{title}</div>
+        <div className="flex items-center gap-3 shrink-0">
+          {badge}
+          <span
+            className={`text-slate-400 text-xs transition-transform inline-block ${
+              open ? "rotate-180" : ""
+            }`}
+            aria-hidden
+          >
+            ▼
+          </span>
+        </div>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
 export default function Page() {
   const [lang, setLang] = useState<Lang>("zh");
   const [origin, setOrigin] = useState<Coords | null>(null);
@@ -53,6 +98,19 @@ export default function Page() {
   const [lngInput, setLngInput] = useState("");
   const [destId, setDestId] = useState<string>("");
   const [warning, setWarning] = useState<string>("");
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(["origin", "dest"])
+  );
+
+  const toggleSection = (id: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // AI Q&A state
   const [aiQuestion, setAiQuestion] = useState("");
@@ -91,7 +149,7 @@ export default function Page() {
   const requestGps = () => {
     setWarning("");
     if (!navigator.geolocation) {
-      setWarning(t("gpsDenied", lang));
+      setWarning(t("gpsUnsupported", lang));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -106,7 +164,18 @@ export default function Page() {
         setLatInput(lat.toFixed(5));
         setLngInput(lng.toFixed(5));
       },
-      () => setWarning(t("gpsDenied", lang))
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setWarning(t("gpsDenied", lang));
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setWarning(t("gpsUnavailable", lang));
+        } else if (err.code === err.TIMEOUT) {
+          setWarning(t("gpsTimeout", lang));
+        } else {
+          setWarning(t("gpsDenied", lang));
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   };
 
@@ -138,6 +207,33 @@ export default function Page() {
   useEffect(() => {
     setDetails({});
   }, [origin, destId]);
+
+  // Auto-open relevant sections when a destination is picked
+  useEffect(() => {
+    if (destId) {
+      setOpenSections((prev) => new Set([...prev, "ticket", "routes"]));
+    }
+  }, [destId]);
+
+  // Auto-select best route when route list changes (priority: balanced > fastest > cheapest > first)
+  useEffect(() => {
+    if (routes.length === 0) {
+      setSelectedRouteId(null);
+      return;
+    }
+    if (selectedRouteId && routes.some((r) => r.id === selectedRouteId)) return;
+    const byPriority =
+      routes.find((r) => r.tags.includes("balanced")) ??
+      routes.find((r) => r.tags.includes("fastest")) ??
+      routes.find((r) => r.tags.includes("cheapest")) ??
+      routes[0];
+    setSelectedRouteId(byPriority.id);
+  }, [routes, selectedRouteId]);
+
+  const selectedRoute = useMemo(
+    () => routes.find((r) => r.id === selectedRouteId) ?? null,
+    [routes, selectedRouteId]
+  );
 
   const loadDetail = async (route: Route) => {
     if (!origin || !destination) return;
@@ -223,42 +319,62 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen p-4 md:p-8">
-      <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {t("appTitle", lang)}
-          </h1>
-          <p className="text-slate-300 text-sm md:text-base mt-1">
-            {t("subtitle", lang)}
-          </p>
-        </div>
-        <div className="flex gap-1 rounded-lg bg-slate-800/60 p-1 ring-1 ring-slate-700">
-          {LANGS.map((l) => (
-            <button
-              key={l}
-              onClick={() => setLang(l)}
-              className={`rounded-md px-2.5 py-1 text-sm font-medium transition ${
-                lang === l
-                  ? "bg-sky-600 text-white"
-                  : "text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {LANG_LABELS[l]}
-            </button>
-          ))}
+    <main className="min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
+        <div className="mx-auto max-w-[1600px] px-4 md:px-8 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 via-cyan-400 to-emerald-400 text-xl font-black text-slate-950 shadow-lg shadow-sky-500/30">
+              北
+            </div>
+            <div>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight bg-gradient-to-r from-sky-200 via-white to-violet-200 bg-clip-text text-transparent">
+                {t("brand", lang)}
+              </h1>
+              <p className="text-[11px] text-slate-400 leading-tight">
+                {t("brandTagline", lang)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 rounded-lg bg-slate-800/60 p-1 ring-1 ring-slate-700">
+            {LANGS.map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`rounded-md px-2.5 py-1 text-sm font-medium transition ${
+                  lang === l
+                    ? "bg-sky-600 text-white shadow shadow-sky-500/30"
+                    : "text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                {LANG_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
+      <div className="mx-auto max-w-[1600px] p-4 md:p-8">
+        <div className="mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            {t("appTitle", lang)}
+          </h2>
+          <p className="text-slate-400 text-sm md:text-base mt-1">
+            {t("subtitle", lang)}
+          </p>
+        </div>
+
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
         <section className="space-y-5">
-          <div className="rounded-xl bg-slate-900/70 p-4 ring-1 ring-slate-800">
-            <h2 className="text-sm font-semibold text-slate-200 mb-2">
-              {t("origin", lang)}
-            </h2>
+          <Section
+            id="origin"
+            title={<span className="text-slate-200">📍 {t("origin", lang)}</span>}
+            accent="bg-slate-900/70 ring-slate-800"
+            openSet={openSections}
+            onToggle={toggleSection}
+          >
             <button
               onClick={requestGps}
-              className="w-full rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium"
+              className="w-full rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 px-3 py-2 text-sm font-semibold gps-pulse transition"
             >
               📍 {t("useGps", lang)}
             </button>
@@ -287,12 +403,22 @@ export default function Page() {
             {warning && (
               <p className="mt-2 text-xs text-amber-400">{warning}</p>
             )}
-          </div>
+          </Section>
 
-          <div className="rounded-xl bg-slate-900/70 p-4 ring-1 ring-slate-800">
-            <h2 className="text-sm font-semibold text-slate-200 mb-2">
-              {t("destination", lang)}
-            </h2>
+          <Section
+            id="dest"
+            title={<span className="text-slate-200">🎯 {t("destination", lang)}</span>}
+            accent="bg-slate-900/70 ring-slate-800"
+            badge={
+              destination ? (
+                <span className="text-xs text-slate-400 max-w-[140px] truncate">
+                  {attractionName(destination, lang)}
+                </span>
+              ) : null
+            }
+            openSet={openSections}
+            onToggle={toggleSection}
+          >
             <select
               value={destId}
               onChange={(e) => {
@@ -309,16 +435,18 @@ export default function Page() {
                 </option>
               ))}
             </select>
-          </div>
+          </Section>
 
           {destination && (
-            <div className="rounded-xl bg-gradient-to-br from-amber-900/40 to-orange-900/30 p-4 ring-1 ring-amber-700/40">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-amber-100">
-                  🎟️ {t("ticketInfo", lang)}
-                </h2>
+            <Section
+              id="ticket"
+              title={
+                <span className="text-amber-100">🎟️ {t("ticketInfo", lang)}</span>
+              }
+              accent="bg-gradient-to-br from-amber-900/40 to-orange-900/30 ring-amber-700/40"
+              badge={
                 <span
-                  className={`text-base font-bold ${
+                  className={`text-sm font-bold ${
                     destination.ticket === 0 ? "text-emerald-300" : "text-amber-200"
                   }`}
                 >
@@ -326,7 +454,10 @@ export default function Page() {
                     ? t("free", lang)
                     : `NT$ ${destination.ticket}`}
                 </span>
-              </div>
+              }
+              openSet={openSections}
+              onToggle={toggleSection}
+            >
               {destination.ticket === 0 ? (
                 <p className="text-xs text-slate-300">
                   {t("freeNoTicket", lang)}
@@ -346,23 +477,38 @@ export default function Page() {
                   </p>
                 </>
               )}
-            </div>
+            </Section>
           )}
 
-          {origin && destination && distanceKm != null && routes.length > 0 ? (
-            <div className="rounded-xl bg-slate-900/70 p-4 ring-1 ring-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-200">
-                  {t("recommendedRoutes", lang)}
-                </h2>
+          <Section
+            id="routes"
+            title={
+              <span className="text-slate-200">🛣️ {t("recommendedRoutes", lang)}</span>
+            }
+            accent="bg-slate-900/70 ring-slate-800"
+            badge={
+              distanceKm != null ? (
                 <span className="text-xs text-slate-400">
                   {distanceKm.toFixed(2)} {t("km", lang)}
                 </span>
-              </div>
-              {routes.map((r) => (
+              ) : null
+            }
+            openSet={openSections}
+            onToggle={toggleSection}
+          >
+            {origin && destination && distanceKm != null && routes.length > 0 ? (
+              <div className="space-y-3">
+              {routes.map((r) => {
+                const isSelected = selectedRouteId === r.id;
+                return (
                 <div
                   key={r.id}
-                  className="rounded-lg bg-slate-800/60 p-3 ring-1 ring-slate-700"
+                  onClick={() => setSelectedRouteId(r.id)}
+                  className={`cursor-pointer rounded-lg bg-slate-800/60 p-3 ring-1 transition card-hover ${
+                    isSelected
+                      ? "route-selected ring-sky-500"
+                      : "ring-slate-700 hover:ring-slate-500"
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                     <div className="flex items-center gap-1 text-sm font-medium">
@@ -376,7 +522,12 @@ export default function Page() {
                         </span>
                       ))}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
+                      {isSelected && (
+                        <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/40">
+                          🗺️ {t("selectedOnMap", lang)}
+                        </span>
+                      )}
                       {r.tags.map((tag) => (
                         <span
                           key={tag}
@@ -396,7 +547,10 @@ export default function Page() {
                     </span>
                   </div>
                   <button
-                    onClick={() => toggleDetail(r)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDetail(r);
+                    }}
                     disabled={details[r.id]?.loading}
                     className="mt-2 w-full rounded-md bg-slate-700/70 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 px-2 py-1.5 text-xs font-medium transition"
                   >
@@ -420,18 +574,21 @@ export default function Page() {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl bg-slate-900/40 p-4 ring-1 ring-slate-800 text-sm text-slate-400">
-              {t("fillFirst", lang)}
-            </div>
-          )}
+                );
+              })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">{t("fillFirst", lang)}</p>
+            )}
+          </Section>
 
-          <div className="rounded-xl bg-gradient-to-br from-violet-900/50 to-fuchsia-900/30 p-4 ring-1 ring-violet-700/40">
-            <h2 className="text-sm font-semibold text-slate-100 mb-2 flex items-center gap-2">
-              ✨ {t("askAi", lang)}
-            </h2>
+          <Section
+            id="ai"
+            title={<span className="text-slate-100">✨ {t("askAi", lang)}</span>}
+            accent="bg-gradient-to-br from-violet-900/50 to-fuchsia-900/30 ring-violet-700/40"
+            openSet={openSections}
+            onToggle={toggleSection}
+          >
             {!destination ? (
               <p className="text-xs text-slate-400">{t("askPickFirst", lang)}</p>
             ) : (
@@ -470,13 +627,23 @@ export default function Page() {
                 )}
               </>
             )}
-          </div>
+          </Section>
 
           {destination && nearby.length > 0 && (
-            <div className="rounded-xl bg-slate-900/70 p-4 ring-1 ring-slate-800">
-              <h2 className="text-sm font-semibold text-slate-200 mb-3">
-                {t("nearby", lang)}
-              </h2>
+            <Section
+              id="nearby"
+              title={
+                <span className="text-slate-200">📍 {t("nearby", lang)}</span>
+              }
+              accent="bg-slate-900/70 ring-slate-800"
+              badge={
+                <span className="text-xs text-slate-400">
+                  {nearby.length}
+                </span>
+              }
+              openSet={openSections}
+              onToggle={toggleSection}
+            >
               <ul className="space-y-2">
                 {nearby.map((n) => (
                   <li
@@ -502,24 +669,54 @@ export default function Page() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Section>
           )}
         </section>
 
-        <section className="h-[60vh] lg:h-[80vh] rounded-xl overflow-hidden ring-1 ring-slate-800">
+        <section className="h-[60vh] lg:h-[calc(100vh-180px)] lg:sticky lg:top-[88px] rounded-xl overflow-hidden ring-1 ring-slate-800 shadow-2xl shadow-slate-950/50 relative">
           <MapView
             origin={origin}
             destination={destination}
             nearby={nearby}
+            selectedRoute={selectedRoute}
             lang={lang}
             onMapClick={handleMapClick}
           />
+          {selectedRoute && (
+            <div className="absolute top-3 left-3 z-[400] rounded-lg bg-slate-900/85 backdrop-blur-sm ring-1 ring-slate-700 px-3 py-2 text-xs space-y-1 max-w-[240px]">
+              <div className="font-semibold text-slate-200 mb-1">
+                {t("legend", lang)}
+              </div>
+              {selectedRoute.segments.map((s, i) => {
+                const style = MODE_STYLE[s.mode as TransportMode];
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-1 w-6 rounded"
+                      style={{
+                        background: style.color,
+                        opacity: style.dashArray ? 0.7 : 1,
+                      }}
+                    />
+                    <span>
+                      {MODE_ICON[s.mode as TransportMode]} {t(s.mode as TransportMode, lang)} ·{" "}
+                      {s.km.toFixed(1)} km
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
 
-      <footer className="mt-8 text-xs text-slate-500 text-center">
-        © {new Date().getFullYear()} 台北找樂 · YTP 2026
-      </footer>
+        <footer className="mt-12 pt-6 border-t border-white/5 text-xs text-slate-500 text-center">
+          © {new Date().getFullYear()} 台北找樂 · YTP 2026 · Powered by{" "}
+          <span className="text-slate-400">Claude Opus 4.7</span> ·{" "}
+          <span className="text-slate-400">Leaflet</span> ·{" "}
+          <span className="text-slate-400">OpenStreetMap</span>
+        </footer>
+      </div>
     </main>
   );
 }
