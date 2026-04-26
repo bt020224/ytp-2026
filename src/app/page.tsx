@@ -48,6 +48,35 @@ const TAG_LABEL_KEY: Record<RouteTag, "tagFastest" | "tagCheapest" | "tagBalance
   balanced: "tagBalanced",
 };
 
+const isApiKeyMissingError = (msg: string) =>
+  /ANTHROPIC_API_KEY/i.test(msg) || /API key/i.test(msg);
+
+function ApiKeyMissingCard({ lang }: { lang: Lang }) {
+  return (
+    <div className="rounded-md bg-amber-500/10 ring-1 ring-amber-500/40 p-3 mt-2">
+      <div className="flex items-start gap-2">
+        <span className="text-base shrink-0">🔑</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-amber-200">
+            {t("apiKeyMissingTitle", lang)}
+          </div>
+          <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+            {t("apiKeyMissingBody", lang)}
+          </p>
+          <a
+            href="https://console.anthropic.com/settings/keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-2 text-[11px] font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
+          >
+            {t("apiKeyGetIt", lang)} ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Section({
   id,
   title,
@@ -561,9 +590,13 @@ export default function Page() {
                       : `📋 ${t("detailedDirections", lang)}`}
                   </button>
                   {details[r.id]?.error && (
-                    <p className="mt-2 text-xs text-rose-400">
-                      {details[r.id].error}
-                    </p>
+                    isApiKeyMissingError(details[r.id].error) ? (
+                      <ApiKeyMissingCard lang={lang} />
+                    ) : (
+                      <p className="mt-2 text-xs text-rose-400">
+                        {details[r.id].error}
+                      </p>
+                    )
                   )}
                   {details[r.id]?.text && (
                     <div className="mt-2 rounded-md bg-slate-900/70 p-3 text-xs text-slate-100 whitespace-pre-wrap leading-relaxed ring-1 ring-slate-700">
@@ -618,7 +651,11 @@ export default function Page() {
                   </p>
                 )}
                 {aiError && (
-                  <p className="mt-2 text-xs text-rose-400">{aiError}</p>
+                  isApiKeyMissingError(aiError) ? (
+                    <ApiKeyMissingCard lang={lang} />
+                  ) : (
+                    <p className="mt-2 text-xs text-rose-400">{aiError}</p>
+                  )
                 )}
                 {aiAnswer && (
                   <div className="mt-3 rounded-md bg-slate-900/60 p-3 text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">

@@ -235,6 +235,24 @@ export const STRINGS: Record<string, L> = {
     ja: "AI · ルート · チケット · 多言語",
     ko: "AI · 경로 · 티켓 · 다국어",
   },
+  apiKeyMissingTitle: {
+    zh: "尚未設定 AI 金鑰",
+    en: "AI key not configured",
+    ja: "APIキーが未設定です",
+    ko: "AI 키가 설정되지 않았습니다",
+  },
+  apiKeyMissingBody: {
+    zh: "需要設定 ANTHROPIC_API_KEY 才能使用 AI 功能。請在專案根目錄建立 .env.local 檔，加入金鑰後重啟 dev server。",
+    en: "Set ANTHROPIC_API_KEY in .env.local at the project root, then restart the dev server.",
+    ja: "プロジェクトルートの.env.localに ANTHROPIC_API_KEY を設定し、dev serverを再起動してください。",
+    ko: "프로젝트 루트의 .env.local에 ANTHROPIC_API_KEY를 설정한 후 dev server를 재시작하세요.",
+  },
+  apiKeyGetIt: {
+    zh: "前往 console.anthropic.com 取得金鑰",
+    en: "Get a key at console.anthropic.com",
+    ja: "console.anthropic.comでキーを取得",
+    ko: "console.anthropic.com에서 키 발급",
+  },
 };
 
 export type StringKey = keyof typeof STRINGS;
