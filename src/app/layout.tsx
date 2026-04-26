@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_TC } from "next/font/google";
+import { SideNav } from "@/components/SideNav";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,7 +24,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-Hant" className={`${inter.variable} ${notoTc.variable}`}>
-      <body>{children}</body>
+      <body>
+        <SideNav />
+        <div className="pl-14">{children}</div>
+      </body>
     </html>
   );
 }
