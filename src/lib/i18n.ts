@@ -298,6 +298,18 @@ export const STRINGS: Record<string, L> = {
     ja: "あなたの近くのおすすめ",
     ko: "근처 추천 명소",
   },
+  homeFeaturedHeading: {
+    zh: "今日精選推薦",
+    en: "Today's Picks",
+    ja: "今日のおすすめ",
+    ko: "오늘의 추천",
+  },
+  homeAllAttractions: {
+    zh: "看全部景點 / 規劃路線",
+    en: "All attractions / Plan route",
+    ja: "すべての観光地 / ルート計画",
+    ko: "모든 명소 / 경로 계획",
+  },
   homeStartPlan: {
     zh: "開始規劃單一路線",
     en: "Plan a Single Route",

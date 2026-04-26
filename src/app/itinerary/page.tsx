@@ -15,6 +15,7 @@ import {
   ApiKeyMissingCard,
   isApiKeyMissingError,
 } from "@/components/ApiKeyMissingCard";
+import { AttractionImage } from "@/components/AttractionImage";
 
 type Stop = { attractionId: string; reasoning?: string };
 
@@ -225,13 +226,21 @@ export default function ItineraryPage() {
               {stopsResolved.map((s, i) => (
                 <li
                   key={`${s.attractionId}-${i}`}
-                  className="rounded-xl bg-slate-900/70 ring-1 ring-slate-800 p-4"
+                  className="rounded-xl bg-slate-900/70 ring-1 ring-slate-800 overflow-hidden"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white shadow shadow-violet-500/40">
-                      {i + 1}
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="sm:w-48 sm:shrink-0 relative">
+                      <AttractionImage
+                        attraction={s.attraction}
+                        lang={lang}
+                        className="h-32 sm:h-full w-full"
+                        rounded=""
+                      />
+                      <div className="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white shadow-lg shadow-violet-500/40 ring-2 ring-slate-900">
+                        {i + 1}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 p-4">
                       <div className="flex items-start justify-between gap-2 flex-wrap">
                         <div>
                           <div className="font-semibold text-slate-100">
